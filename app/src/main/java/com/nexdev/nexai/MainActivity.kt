@@ -31,13 +31,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
 
-private val Night = Color(0xFF070B18)
-private val Glass = Color(0xCC111C35)
-private val Cyan = Color(0xFF63E8FF)
-private val Violet = Color(0xFF9472FF)
-private val Soft = Color(0xFFF2F6FF)
-private val Muted = Color(0xFF91A4C6)
+private val Night = Color(0xFF07070B)
+private val Glass = Color(0xCC171018)
+private val Cyan = Color(0xFFFF315A)
+private val Violet = Color(0xFFFF087F)
+private val Soft = Color(0xFFFFF4F7)
+private val Muted = Color(0xFFB7A4AF)
 
 class MainActivity : ComponentActivity() {
     private val notificationPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) {}
@@ -60,6 +66,9 @@ private fun NexApp(appContext: android.content.Context) {
     var effects by remember { mutableStateOf(true) }
     var glow by remember { mutableStateOf(true) }
     var prompt by remember { mutableStateOf("") }
+    var backendUrl by remember { mutableStateOf(appContext.getSharedPreferences("nex", 0).getString("backend_url", "") ?: "") }
+    var provider by remember { mutableStateOf("gemini") }
+    var chatReply by remember { mutableStateOf("Connect your NEX backend in Settings to start real conversations.") }
     var status by remember { mutableStateOf("Ready when you are. Connect a secure AI backend for real answers.") }
     LaunchedEffect(Unit) { delay(1500); splash = false }
     MaterialTheme(colorScheme = darkColorScheme(primary = Cyan, secondary = Violet, background = Night, surface = Glass, onPrimary = Night, onBackground = Soft, onSurface = Soft)) {
@@ -75,14 +84,25 @@ private fun NexApp(appContext: android.content.Context) {
                                 tab = "Chat"; thinking = true
                                 status = "Task preview started. Real actions need a configured AI backend."
                             }
-                            "Chat" -> ChatScreen(prompt, { prompt = it }, status, thinking) {
-                                if (prompt.isNotBlank()) {
-                                    status = "Demo only: request captured in the interface. Configure a secure backend for AI replies."
-                                    thinking = true; prompt = ""
+                            "Chat" -> ChatScreen(prompt, { prompt = it }, chatReply, thinking, provider, { provider = it }) {
+                                val message = prompt.trim()
+                                if (message.isNotBlank()) {
+                                    if (backendUrl.isBlank() || !backendUrl.startsWith("https://")) {
+                                        chatReply = "Add your deployed HTTPS backend URL in Settings first. API keys stay on the backend."
+                                    } else {
+                                        thinking = true
+                                        prompt = ""
+                                        chatReply = "Thinking…"
+                                        kotlinx.coroutines.GlobalScope.launch(Dispatchers.Main) {
+                                            val result = requestNexBackend(backendUrl, message, provider)
+                                            chatReply = result
+                                            thinking = false
+                                        }
+                                    }
                                 }
                             }
                             "Studio" -> StudioScreen()
-                            else -> SettingsScreen(backgroundOn, { enabled ->
+                            else -> SettingsScreen(backendUrl, { value -> backendUrl = value; appContext.getSharedPreferences("nex", 0).edit().putString("backend_url", value.trimEnd('/')).apply() }, backgroundOn, { enabled ->
                                 backgroundOn = enabled
                                 val intent = Intent(appContext, NexBackgroundService::class.java)
                                 if (enabled) {
@@ -157,18 +177,20 @@ private fun HomeScreen(thinking: Boolean, status: String, effects: Boolean, glow
 }
 
 @Composable
-private fun ChatScreen(prompt: String, onPrompt: (String) -> Unit, status: String, thinking: Boolean, onSend: () -> Unit) {
+private fun ChatScreen(prompt: String, onPrompt: (String) -> Unit, status: String, thinking: Boolean, provider: String, onProvider: (String) -> Unit, onSend: () -> Unit) {
     Column(Modifier.fillMaxSize()) {
         Text("CONVERSATION", color = Cyan, fontSize = 11.sp, letterSpacing = 2.sp)
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { listOf("gemini" to "Gemini", "openai" to "OpenAI").forEach { (id, label) -> FilterChip(selected = provider == id, onClick = { onProvider(id) }, label = { Text(label) }) } }
+        Spacer(Modifier.height(8.dp))
         GlassCard(Modifier.weight(1f)) {
             NexOrb(92.dp, thinking)
             Spacer(Modifier.height(12.dp))
-            Text(if (thinking) "Thinking animation" else "NEX is ready", color = Soft, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Text(if (thinking) "NEX is thinking…" else "NEX AI", color = Soft, fontSize = 20.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(8.dp))
             Text(status, color = Muted, fontSize = 13.sp)
             Spacer(Modifier.height(10.dp))
-            Text("Demo interface only — a secure AI backend is needed for real responses.", color = Color(0xFFFFD58B), fontSize = 11.sp)
+            Text(if (thinking) "Connecting securely to your backend" else "Provider: ${if (provider == "gemini") "Google Gemini" else "OpenAI"}", color = Cyan, fontSize = 11.sp)
         }
         Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(Glass).border(1.dp, Cyan.copy(alpha = .25f), RoundedCornerShape(22.dp)).padding(6.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -190,7 +212,7 @@ private fun StudioScreen() {
 }
 
 @Composable
-private fun SettingsScreen(backgroundOn: Boolean, onBackground: (Boolean) -> Unit, effects: Boolean, onEffects: (Boolean) -> Unit, glow: Boolean, onGlow: (Boolean) -> Unit) {
+private fun SettingsScreen(backendUrl: String, onBackendUrl: (String) -> Unit, backgroundOn: Boolean, onBackground: (Boolean) -> Unit, effects: Boolean, onEffects: (Boolean) -> Unit, glow: Boolean, onGlow: (Boolean) -> Unit) {
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text("CONTROL CENTRE", color = Cyan, fontSize = 11.sp, letterSpacing = 2.sp)
         GlassCard {
@@ -200,7 +222,13 @@ private fun SettingsScreen(backgroundOn: Boolean, onBackground: (Boolean) -> Uni
         }
         SettingRow("Floating animations", "Animate the orb and interface", effects, onEffects)
         SettingRow("Neon glow", "Cyan and violet accents", glow, onGlow)
-        GlassCard { Text("AI CONNECTION", color = Soft, fontWeight = FontWeight.SemiBold); Spacer(Modifier.height(5.dp)); Text("No API key is stored in this app. Add a trusted backend before enabling Gemini or other cloud AI.", color = Color(0xFFFFD58B), fontSize = 12.sp) }
+        GlassCard {
+            Text("AI CONNECTION", color = Soft, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(5.dp))
+            Text("Backend HTTPS URL", color = Muted, fontSize = 12.sp)
+            TextField(value = backendUrl, onValueChange = onBackendUrl, modifier = Modifier.fillMaxWidth(), placeholder = { Text("https://your-backend.example.com") }, singleLine = true, colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent, focusedTextColor = Soft, unfocusedTextColor = Soft, cursorColor = Cyan))
+            Text("Never put provider API keys in the app. Store GEMINI_API_KEY and OPENAI_API_KEY as server environment secrets.", color = Color(0xFFFFD58B), fontSize = 12.sp)
+        }
         GlassCard { Text("PRIVACY & CONTROL", color = Soft, fontWeight = FontWeight.SemiBold); Text("NEX does not silently control other apps. Cross-app actions need Android-approved permissions and clear confirmation.", color = Muted, fontSize = 12.sp) }
     }
 }
@@ -258,5 +286,26 @@ private fun FloatingNav(current: String, onSelect: (String) -> Unit) {
                 Text(name, color = if (current == name) Soft else Muted, fontSize = 9.sp)
             }
         }
+    }
+}
+
+
+private suspend fun requestNexBackend(baseUrl: String, message: String, provider: String): String = withContext(Dispatchers.IO) {
+    try {
+        val connection = (URL(baseUrl.trimEnd('/') + "/api/chat").openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"
+            connectTimeout = 15000
+            readTimeout = 60000
+            doOutput = true
+            setRequestProperty("Content-Type", "application/json; charset=utf-8")
+        }
+        connection.outputStream.use { it.write(JSONObject().put("message", message).put("provider", provider).toString().toByteArray(Charsets.UTF_8)) }
+        val stream = if (connection.responseCode in 200..299) connection.inputStream else connection.errorStream
+        val body = stream.bufferedReader().use { it.readText() }
+        connection.disconnect()
+        val json = JSONObject(body)
+        if (json.has("reply")) json.optString("reply") else "Backend error: ${json.optString("error", "Unknown response")}" 
+    } catch (e: Exception) {
+        "Couldn't reach the NEX backend. Check the HTTPS URL and server logs. (${e.javaClass.simpleName})"
     }
 }
