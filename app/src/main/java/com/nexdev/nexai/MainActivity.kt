@@ -85,23 +85,26 @@ private fun NexApp(appContext: android.content.Context) {
                                 tab = "Chat"; thinking = true
                                 status = "Task preview started. Real actions need a configured AI backend."
                             }
-                            "Chat" -> ChatScreen(prompt, { prompt = it }, chatReply, thinking, provider, { provider = it }) {
-                                val message = prompt.trim()
-                                if (message.isNotBlank()) {
-                                    if (backendUrl.isBlank() || !backendUrl.startsWith("https://")) {
-                                        chatReply = "Add your deployed HTTPS backend URL in Settings first. API keys stay on the backend."
-                                    } else {
-                                        thinking = true
-                                        prompt = ""
-                                        chatReply = "Thinking…"
-                                        kotlinx.coroutines.GlobalScope.launch(Dispatchers.Main) {
-                                            val result = requestNexBackend(backendUrl, message, provider)
-                                            chatReply = result
-                                            thinking = false
+                            "Chat" -> ChatScreen(
+                                prompt = prompt,
+                                onPrompt = { prompt = it },
+                                status = chatReply,
+                                thinking = thinking,
+                                onSend = {
+                                    val message = prompt.trim()
+                                    if (message.isNotBlank()) {
+                                        chatReply = if (
+                                            backendUrl.isNotBlank() &&
+                                            backendUrl.startsWith("https://")
+                                        ) {
+                                            "Backend connection is not implemented yet. We can connect it next."
+                                        } else {
+                                            "Open Settings and add your deployed HTTPS backend URL to connect AI."
                                         }
+                                        prompt = ""
                                     }
                                 }
-                            }
+                            )
                             "Studio", "Explore" -> StudioScreen()
                             else -> SettingsScreen(backendUrl, { value -> backendUrl = value; appContext.getSharedPreferences("nex", 0).edit().putString("backend_url", value.trimEnd('/')).apply() }, backgroundOn, { enabled ->
                                 backgroundOn = enabled
