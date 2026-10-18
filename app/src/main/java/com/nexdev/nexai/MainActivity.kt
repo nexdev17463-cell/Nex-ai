@@ -115,9 +115,9 @@ private fun NexApp(appContext: android.content.Context) {
                             }, effects, { effects = it }, glow, { glow = it })
                         }
                     }
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(5.dp))
                     FloatingNav(tab) { tab = it }
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(2.dp))
                 }
             }
         }
@@ -126,13 +126,13 @@ private fun NexApp(appContext: android.content.Context) {
 
 @Composable
 private fun Header() {
-    Row(Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(46.dp).clip(RoundedCornerShape(16.dp)).background(Brush.linearGradient(listOf(Cyan, Violet))).border(1.dp, Color.White.copy(alpha = .35f), RoundedCornerShape(16.dp)), contentAlignment = Alignment.Center) {
-            Text("N", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Black)
+    Row(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(38.dp).clip(RoundedCornerShape(13.dp)).background(Brush.linearGradient(listOf(Cyan, Violet))).border(1.dp, Color.White.copy(alpha = .35f), RoundedCornerShape(16.dp)), contentAlignment = Alignment.Center) {
+            Text("N", color = Color.White, fontSize = 23.sp, fontWeight = FontWeight.Black)
         }
         Spacer(Modifier.width(11.dp))
         Column(Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) { Text("NEX", color = Soft, fontSize = 22.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp); Spacer(Modifier.width(5.dp)); Text("AI", color = Cyan, fontSize = 22.sp, fontWeight = FontWeight.Black) }
+            Row(verticalAlignment = Alignment.CenterVertically) { Text("NEX", color = Soft, fontSize = 19.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp); Spacer(Modifier.width(5.dp)); Text("AI", color = Cyan, fontSize = 19.sp, fontWeight = FontWeight.Black) }
             Text("YOUR PERSONAL AI SPACE", color = Muted, fontSize = 9.sp, letterSpacing = 1.5.sp)
         }
         Surface(color = Color(0xFF1B1723), shape = RoundedCornerShape(50), border = androidx.compose.foundation.BorderStroke(1.dp, Cyan.copy(alpha = .45f))) {
@@ -336,15 +336,67 @@ private fun NexOrb(size: androidx.compose.ui.unit.Dp, animated: Boolean) {
 
 @Composable
 private fun FloatingNav(current: String, onSelect: (String) -> Unit) {
-    val items = listOf("Home" to "⌂", "Explore" to "⌕", "Chat" to "◉", "Studio" to "✦", "Settings" to "⚙")
-    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(25.dp)).background(Color(0xF2111018)).border(1.dp, Color.White.copy(alpha = .09f), RoundedCornerShape(25.dp)).padding(5.dp), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-        items.forEach { (name, icon) ->
+    val items = listOf(
+        "Home" to "⌂",
+        "Explore" to "⌕",
+        "Chat" to "◉",
+        "Studio" to "✦",
+        "Settings" to "⚙"
+    )
+
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(22.dp))
+            .background(Color(0xF20D0C12))
+            .border(1.dp, Color.White.copy(alpha = 0.07f), RoundedCornerShape(22.dp))
+            .padding(horizontal = 4.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        items.forEach { (name, symbol) ->
             val selected = current == name
-            Column(Modifier.weight(1f).clip(RoundedCornerShape(19.dp)).background(if (selected) Brush.verticalGradient(listOf(Color(0xFF5A172F), Color(0xFF28121E))) else Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent))).then(if (selected) Modifier.border(1.dp, Cyan.copy(alpha = .55f), RoundedCornerShape(19.dp)) else Modifier).clickable { onSelect(name) }.padding(vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(icon, color = if (selected) Cyan else Muted, fontSize = 19.sp, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(2.dp))
-                Text(name, color = if (selected) Soft else Muted, fontSize = 9.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal)
-                if (selected) Spacer(Modifier.height(2.dp).width(14.dp).clip(CircleShape).background(Cyan))
+            Column(
+                Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(
+                        if (selected) Color(0xFF351321)
+                        else Color.Transparent
+                    )
+                    .then(
+                        if (selected) Modifier.border(
+                            1.dp,
+                            Cyan.copy(alpha = 0.48f),
+                            RoundedCornerShape(16.dp)
+                        ) else Modifier
+                    )
+                    .clickable { onSelect(name) }
+                    .padding(vertical = 7.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    symbol,
+                    color = if (selected) Cyan else Muted,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(Modifier.height(3.dp))
+                Text(
+                    name,
+                    color = if (selected) Soft else Muted,
+                    fontSize = 9.sp,
+                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                    maxLines = 1
+                )
+                Spacer(Modifier.height(3.dp))
+                Box(
+                    Modifier
+                        .width(if (selected) 14.dp else 4.dp)
+                        .height(2.dp)
+                        .clip(CircleShape)
+                        .background(if (selected) Cyan else Color.Transparent)
+                )
             }
         }
     }
