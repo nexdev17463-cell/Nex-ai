@@ -14,6 +14,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -72,7 +73,7 @@ private fun NexApp(appContext: android.content.Context) {
     var status by remember { mutableStateOf("Ready when you are. Connect a secure AI backend for real answers.") }
     LaunchedEffect(Unit) { delay(1500); splash = false }
     MaterialTheme(colorScheme = darkColorScheme(primary = Cyan, secondary = Violet, background = Night, surface = Glass, onPrimary = Night, onBackground = Soft, onSurface = Soft)) {
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF142447), Night, Color(0xFF03050C)))).statusBarsPadding().navigationBarsPadding().padding(horizontal = 16.dp)) {
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF260914), Night, Color(0xFF03050C)))).statusBarsPadding().navigationBarsPadding().padding(horizontal = 16.dp)) {
             if (splash) {
                 SplashScreen()
             } else {
@@ -101,7 +102,7 @@ private fun NexApp(appContext: android.content.Context) {
                                     }
                                 }
                             }
-                            "Studio" -> StudioScreen()
+                            "Studio", "Explore" -> StudioScreen()
                             else -> SettingsScreen(backendUrl, { value -> backendUrl = value; appContext.getSharedPreferences("nex", 0).edit().putString("backend_url", value.trimEnd('/')).apply() }, backgroundOn, { enabled ->
                                 backgroundOn = enabled
                                 val intent = Intent(appContext, NexBackgroundService::class.java)
@@ -122,17 +123,17 @@ private fun NexApp(appContext: android.content.Context) {
 
 @Composable
 private fun Header() {
-    Row(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(48.dp).clip(RoundedCornerShape(17.dp)).background(Brush.linearGradient(listOf(Cyan, Violet))), contentAlignment = Alignment.Center) {
-            Text("N", color = Night, fontSize = 28.sp, fontWeight = FontWeight.Black)
+    Row(Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(46.dp).clip(RoundedCornerShape(16.dp)).background(Brush.linearGradient(listOf(Cyan, Violet))).border(1.dp, Color.White.copy(alpha = .35f), RoundedCornerShape(16.dp)), contentAlignment = Alignment.Center) {
+            Text("N", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Black)
         }
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(11.dp))
         Column(Modifier.weight(1f)) {
-            Text("NEX AI", color = Soft, fontSize = 23.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
-            Text("PERSONAL AI COMPANION", color = Muted, fontSize = 9.sp, letterSpacing = 2.sp)
+            Row(verticalAlignment = Alignment.CenterVertically) { Text("NEX", color = Soft, fontSize = 22.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp); Spacer(Modifier.width(5.dp)); Text("AI", color = Cyan, fontSize = 22.sp, fontWeight = FontWeight.Black) }
+            Text("YOUR PERSONAL AI SPACE", color = Muted, fontSize = 9.sp, letterSpacing = 1.5.sp)
         }
-        Surface(color = Color(0x3325DFA0), shape = RoundedCornerShape(50)) {
-            Text("● READY", Modifier.padding(horizontal = 10.dp, vertical = 7.dp), color = Color(0xFF68F3B0), fontSize = 10.sp)
+        Surface(color = Color(0xFF1B1723), shape = RoundedCornerShape(50), border = androidx.compose.foundation.BorderStroke(1.dp, Cyan.copy(alpha = .45f))) {
+            Row(Modifier.padding(horizontal = 10.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.size(6.dp).background(Color(0xFF72E6A1), CircleShape)); Spacer(Modifier.width(6.dp)); Text("ONLINE", color = Soft, fontSize = 9.sp, fontWeight = FontWeight.Bold) }
         }
     }
 }
@@ -143,7 +144,7 @@ private fun SplashScreen() {
         NexOrb(170.dp, true)
         Spacer(Modifier.height(28.dp))
         Text("NEX AI", color = Soft, fontSize = 34.sp, fontWeight = FontWeight.Black, letterSpacing = 5.sp)
-        Text("A MORE PERSONAL DIGITAL SPACE", color = Cyan, fontSize = 10.sp, letterSpacing = 2.sp)
+        Text("YOUR PERSONAL AI SPACE", color = Cyan, fontSize = 10.sp, letterSpacing = 2.sp)
         Spacer(Modifier.height(28.dp))
         LinearProgressIndicator(Modifier.fillMaxWidth(.48f).height(3.dp).clip(CircleShape), color = Cyan, trackColor = Glass)
         Spacer(Modifier.height(10.dp))
@@ -177,28 +178,81 @@ private fun HomeScreen(thinking: Boolean, status: String, effects: Boolean, glow
 }
 
 @Composable
-private fun ChatScreen(prompt: String, onPrompt: (String) -> Unit, status: String, thinking: Boolean, provider: String, onProvider: (String) -> Unit, onSend: () -> Unit) {
+private fun ChatScreen(prompt: String, onPrompt: (String) -> Unit, status: String, thinking: Boolean, onSend: () -> Unit) {
+    val messages = remember {
+        mutableStateListOf(
+            ChatMessage(false, "Hey! I'm NEX, your personal AI space. What are we working on today?"),
+            ChatMessage(false, "I can help brainstorm, explain concepts, write code, or shape an idea into a plan.")
+        )
+    }
     Column(Modifier.fillMaxSize()) {
-        Text("CONVERSATION", color = Cyan, fontSize = 11.sp, letterSpacing = 2.sp)
-        Spacer(Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { listOf("gemini" to "Gemini", "openai" to "OpenAI").forEach { (id, label) -> FilterChip(selected = provider == id, onClick = { onProvider(id) }, label = { Text(label) }) } }
-        Spacer(Modifier.height(8.dp))
-        GlassCard(Modifier.weight(1f)) {
-            NexOrb(92.dp, thinking)
-            Spacer(Modifier.height(12.dp))
-            Text(if (thinking) "NEX is thinking…" else "NEX AI", color = Soft, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(8.dp))
-            Text(status, color = Muted, fontSize = 13.sp)
-            Spacer(Modifier.height(10.dp))
-            Text(if (thinking) "Connecting securely to your backend" else "Provider: ${if (provider == "gemini") "Google Gemini" else "OpenAI"}", color = Cyan, fontSize = 11.sp)
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("YOUR AI CHAT", color = Soft, fontSize = 19.sp, fontWeight = FontWeight.Bold)
+                Text("A fresh space for every idea", color = Muted, fontSize = 11.sp)
+            }
+            Surface(color = Color(0xFF21101B), shape = RoundedCornerShape(12.dp), border = androidx.compose.foundation.BorderStroke(1.dp, Cyan.copy(alpha = .35f))) {
+                Text("✦  SMART MODE", Modifier.padding(horizontal = 10.dp, vertical = 8.dp), color = Cyan, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+            }
         }
         Spacer(Modifier.height(12.dp))
-        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(Glass).border(1.dp, Cyan.copy(alpha = .25f), RoundedCornerShape(22.dp)).padding(6.dp), verticalAlignment = Alignment.CenterVertically) {
-            TextField(value = prompt, onValueChange = onPrompt, modifier = Modifier.weight(1f), placeholder = { Text("Ask NEX anything…", color = Muted) }, colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent, focusedTextColor = Soft, unfocusedTextColor = Soft, cursorColor = Cyan), maxLines = 3)
-            IconButton(onClick = onSend) { Text("➤", color = Cyan, fontSize = 22.sp) }
+        LazyColumn(
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+            contentPadding = PaddingValues(bottom = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            item {
+                Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                    Box(Modifier.size(32.dp).clip(RoundedCornerShape(11.dp)).background(Brush.linearGradient(listOf(Cyan, Violet))), contentAlignment = Alignment.Center) { Text("N", color = Color.White, fontWeight = FontWeight.Black, fontSize = 18.sp) }
+                    Column(Modifier.weight(1f)) {
+                        Text("NEX AI", color = Cyan, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.height(5.dp))
+                        messages.filter { !it.fromUser }.forEach { msg ->
+                            Surface(color = Color(0xE8171722), shape = RoundedCornerShape(topStart = 4.dp, topEnd = 17.dp, bottomEnd = 17.dp, bottomStart = 17.dp), border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = .07f))) {
+                                Text(msg.text, Modifier.padding(13.dp), color = Soft, fontSize = 13.sp, lineHeight = 19.sp)
+                            }
+                            Spacer(Modifier.height(7.dp))
+                        }
+                    }
+                }
+            }
+            items(messages.count { it.fromUser }) { index ->
+                val userMessages = messages.filter { it.fromUser }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    Surface(color = Brush.linearGradient(listOf(Cyan, Violet)).let { Color(0xFFB91D54) }, shape = RoundedCornerShape(topStart = 17.dp, topEnd = 4.dp, bottomEnd = 17.dp, bottomStart = 17.dp)) {
+                        Text(userMessages[index].text, Modifier.widthIn(max = 270.dp).padding(horizontal = 14.dp, vertical = 11.dp), color = Color.White, fontSize = 13.sp, lineHeight = 18.sp)
+                    }
+                }
+            }
+            if (thinking) item {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Box(Modifier.size(28.dp).clip(RoundedCornerShape(10.dp)).background(Brush.linearGradient(listOf(Cyan, Violet))), contentAlignment = Alignment.Center) { Text("N", color = Color.White, fontWeight = FontWeight.Black) }
+                    Surface(color = Glass, shape = RoundedCornerShape(14.dp), border = androidx.compose.foundation.BorderStroke(1.dp, Cyan.copy(alpha = .25f))) { Text("Preparing your request…", Modifier.padding(12.dp), color = Muted, fontSize = 12.sp) }
+                }
+            }
         }
+        if (messages.count { it.fromUser } == 0) {
+            Text("TRY ASKING", color = Muted, fontSize = 9.sp, letterSpacing = 1.6.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(7.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                listOf("Explain a topic", "Write code", "Brainstorm").forEach { suggestion ->
+                    Surface(modifier = Modifier.weight(1f).clickable { onPrompt(suggestion) }, color = Color(0xFF17131D), shape = RoundedCornerShape(13.dp), border = androidx.compose.foundation.BorderStroke(1.dp, Cyan.copy(alpha = .25f))) {
+                        Text(suggestion, Modifier.padding(horizontal = 6.dp, vertical = 10.dp), color = Soft, fontSize = 10.sp, textAlign = TextAlign.Center)
+                    }
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+        }
+        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(23.dp)).background(Color(0xFF13131D)).border(1.dp, Brush.horizontalGradient(listOf(Cyan.copy(alpha = .8f), Violet.copy(alpha = .5f))), RoundedCornerShape(23.dp)).padding(start = 14.dp, end = 6.dp, top = 5.dp, bottom = 5.dp), verticalAlignment = Alignment.CenterVertically) {
+            TextField(value = prompt, onValueChange = onPrompt, modifier = Modifier.weight(1f), placeholder = { Text("Message NEX…", color = Muted, fontSize = 13.sp) }, colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent, disabledContainerColor = Color.Transparent, focusedTextColor = Soft, unfocusedTextColor = Soft, cursorColor = Cyan, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent), maxLines = 4)
+            IconButton(onClick = { if (prompt.isNotBlank()) { messages.add(ChatMessage(true, prompt.trim())); onSend() } }, modifier = Modifier.size(43.dp).clip(CircleShape).background(Brush.linearGradient(listOf(Cyan, Violet)))) { Text("➤", color = Color.White, fontSize = 21.sp, fontWeight = FontWeight.Bold) }
+        }
+        Spacer(Modifier.height(5.dp))
+        Text("AI can make mistakes • Check important information", Modifier.fillMaxWidth(), color = Muted.copy(alpha = .8f), fontSize = 9.sp, textAlign = TextAlign.Center)
     }
 }
+
+private data class ChatMessage(val fromUser: Boolean, val text: String)
 
 @Composable
 private fun StudioScreen() {
@@ -221,7 +275,7 @@ private fun SettingsScreen(backendUrl: String, onBackendUrl: (String) -> Unit, b
             Switch(checked = backgroundOn, onCheckedChange = onBackground)
         }
         SettingRow("Floating animations", "Animate the orb and interface", effects, onEffects)
-        SettingRow("Neon glow", "Cyan and violet accents", glow, onGlow)
+        SettingRow("Neon glow", "Neon red and pink accents", glow, onGlow)
         GlassCard {
             Text("AI CONNECTION", color = Soft, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(5.dp))
@@ -279,33 +333,16 @@ private fun NexOrb(size: androidx.compose.ui.unit.Dp, animated: Boolean) {
 
 @Composable
 private fun FloatingNav(current: String, onSelect: (String) -> Unit) {
-    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(Brush.horizontalGradient(listOf(Color(0xEE14213D), Color(0xEE10182D)))).border(1.dp, Cyan.copy(alpha = .24f), RoundedCornerShape(28.dp)).padding(5.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        listOf("Home" to "⌂", "Chat" to "◌", "Studio" to "✧", "Settings" to "⚙").forEach { (name, icon) ->
-            Column(Modifier.weight(1f).clip(RoundedCornerShape(21.dp)).background(if (current == name) Cyan.copy(alpha = .13f) else Color.Transparent).clickable { onSelect(name) }.padding(vertical = 9.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(icon, color = if (current == name) Cyan else Muted, fontSize = 20.sp)
-                Text(name, color = if (current == name) Soft else Muted, fontSize = 9.sp)
+    val items = listOf("Home" to "⌂", "Explore" to "⌕", "Chat" to "◉", "Studio" to "✦", "Settings" to "⚙")
+    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(25.dp)).background(Color(0xF2111018)).border(1.dp, Color.White.copy(alpha = .09f), RoundedCornerShape(25.dp)).padding(5.dp), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+        items.forEach { (name, icon) ->
+            val selected = current == name
+            Column(Modifier.weight(1f).clip(RoundedCornerShape(19.dp)).background(if (selected) Brush.verticalGradient(listOf(Color(0xFF5A172F), Color(0xFF28121E))) else Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent))).then(if (selected) Modifier.border(1.dp, Cyan.copy(alpha = .55f), RoundedCornerShape(19.dp)) else Modifier).clickable { onSelect(name) }.padding(vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(icon, color = if (selected) Cyan else Muted, fontSize = 19.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(2.dp))
+                Text(name, color = if (selected) Soft else Muted, fontSize = 9.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal)
+                if (selected) Spacer(Modifier.height(2.dp).width(14.dp).clip(CircleShape).background(Cyan))
             }
         }
-    }
-}
-
-
-private suspend fun requestNexBackend(baseUrl: String, message: String, provider: String): String = withContext(Dispatchers.IO) {
-    try {
-        val connection = (URL(baseUrl.trimEnd('/') + "/api/chat").openConnection() as HttpURLConnection).apply {
-            requestMethod = "POST"
-            connectTimeout = 15000
-            readTimeout = 60000
-            doOutput = true
-            setRequestProperty("Content-Type", "application/json; charset=utf-8")
-        }
-        connection.outputStream.use { it.write(JSONObject().put("message", message).put("provider", provider).toString().toByteArray(Charsets.UTF_8)) }
-        val stream = if (connection.responseCode in 200..299) connection.inputStream else connection.errorStream
-        val body = stream.bufferedReader().use { it.readText() }
-        connection.disconnect()
-        val json = JSONObject(body)
-        if (json.has("reply")) json.optString("reply") else "Backend error: ${json.optString("error", "Unknown response")}" 
-    } catch (e: Exception) {
-        "Couldn't reach the NEX backend. Check the HTTPS URL and server logs. (${e.javaClass.simpleName})"
     }
 }
